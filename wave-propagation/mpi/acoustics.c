@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
                 source_active = 0;
             }
 
-            m_compute_acoustics(rank, numtask, source_active, radius);
+            //m_compute_acoustics(rank, numtask, source_active, radius);
 
             MPI_Barrier(MPI_COMM_WORLD);
 

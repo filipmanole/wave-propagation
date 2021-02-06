@@ -8,5 +8,8 @@
     },
     "editor.formatOnSave": true,
     "editor.insertSpaces": true,
-    "editor.detectIndentation": false
+    "editor.detectIndentation": false,
+    "files.associations": {
+        "*.cu": "cpp"
+    },
 }

@@ -1,5 +1,5 @@
-CC = mpicc
-CFLAGS = -Wall -lm -fopenmp -O3 -g
+CC = cc
+CFLAGS = -xO3 -lm -g
 OBJ = import_data.o export_data.o acoustics_alg.o utils.o
 
 all: acoustics
