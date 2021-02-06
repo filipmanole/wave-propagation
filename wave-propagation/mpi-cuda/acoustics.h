@@ -10,7 +10,6 @@
 
 #ifndef _ACOUSTICS_H
 #define _ACOUSTICS_H
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +18,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include <omp.h>
+// #include <omp.h>
 #include <mpi.h>
 
 #define EXIT_ERROR(msg)               \
@@ -76,22 +75,31 @@ typedef struct
     structure_t structure[MAX_STRUCTURES]; // structurile din domeniu
 } scenario_t;
 
+// #ifdef __NVCC__
+// extern
+// {
+// #endif
+
 // Variabilele globale pentru memorarea tuturor datelor de intrare pentru scenarii
-scenario_t scenario[MAX_SCENARIOS];
-int num_scenarios;
-int scn_index;
+extern scenario_t scenario[MAX_SCENARIOS];
+extern int num_scenarios;
+extern int scn_index;
 
 // Variabile globale pentru rularea unui scenariu
-int nx;
-int ny;
-int local_ny;
-double H;
-double MAX_TIME;
-double TIME_STEP;
-int SAVE_TIME;
+extern int nx;
+extern int ny;
+extern int local_ny;
+extern double H;
+extern double MAX_TIME;
+extern double TIME_STEP;
+extern int SAVE_TIME;
 
 // Variabile globale ale algoritmului de simulare
-double **ua, **ub, **uc, **xchg;
+extern double **ua, **ub, **uc, **xchg;
+
+// #ifdef __NVCC__
+// }
+// #endif
 
 // Functii
 int import_data(char *path);
@@ -109,3 +117,5 @@ int in_structure(int x, int y);
 int is_source(int x, int y, int radius, int source_active);
 void pulse_source(int rank, int numtask, int radius, int step, double amp, int *source_active);
 void m_compute_acoustics(int rank, int numtask, int source_active, int radius);
+
+#endif

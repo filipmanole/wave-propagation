@@ -9,6 +9,21 @@
 
 #include "acoustics.h"
 
+scenario_t scenario[MAX_SCENARIOS];
+int num_scenarios;
+int scn_index;
+int nx;
+int ny;
+int local_ny;
+double H;
+double MAX_TIME;
+double TIME_STEP;
+int SAVE_TIME;
+double **ua;
+double **ub;
+double **uc;
+double **xchg;
+
 int main(int argc, char *argv[])
 {
     int i, j;
@@ -89,14 +104,13 @@ int main(int argc, char *argv[])
 
     //print_import_data(rank);
 
-    scn_index = 0;
+    int scn_index = 0;
     while (scn_index < num_scenarios)
     {
         int step = 0;
         int source_active = 1;
 
         start_time = time(NULL);
-        omp_set_num_threads(scenario[scn_index].OMP_THREADS);
         load_scenario();
 
         if (rank == 0)
@@ -118,11 +132,12 @@ int main(int argc, char *argv[])
         recalculate_positions(rank, numtask);
 
         int radius = scenario[scn_index].source.radius;
+
         while (step < (int)(MAX_TIME / TIME_STEP))
         {
             pulse_source(rank, numtask, radius, step, scenario[scn_index].amp, &source_active);
 
-            // m_compute_acoustics(rank, numtask, source_active, radius);
+            m_compute_acoustics(rank, numtask, source_active, radius);
 
             MPI_Barrier(MPI_COMM_WORLD);
 

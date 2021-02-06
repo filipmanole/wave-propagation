@@ -183,7 +183,6 @@ void pulse_source(int rank, int numtask, int radius, int step, double amp, int *
 
     if (step < (int)(MAX_TIME / TIME_STEP) / 2)
     {
-#pragma omp for private(i, j)
         for (i = 1; i < local_ny + 1; i++)
             for (j = 0; j < nx; j++)
                 if (is_source(i, j, radius, 1))
@@ -191,7 +190,6 @@ void pulse_source(int rank, int numtask, int radius, int step, double amp, int *
     }
     else if (*source_active)
     {
-#pragma omp parallel for private(i, j)
         for (i = start; i < stop; i++)
             for (j = 0; j < nx; j++)
             {
@@ -213,7 +211,6 @@ void m_compute_acoustics(int rank, int numtask, int source_active, int radius)
         start = 1;
     stop = local_ny + 1;
 
-#pragma omp parallel for private(i, j, place)
     for (i = start; i < stop; i++)
         for (j = 0; j < nx; j++)
         {
