@@ -2,8 +2,8 @@
 
 [SCENARIO] = 0
 [OMP_THREADS] = 2
-[SIZEX] = 192
-[SIZEY] = 192
+[SIZEX] = 2048
+[SIZEY] = 2048
 [H] = 0.2
 [MAX_TIME] = 30
 [TIME_STEP] = 0.005

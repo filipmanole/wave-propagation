@@ -10,6 +10,8 @@
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
     "files.associations": {
-        "*.cu": "cpp"
+        "*.cu": "cpp",
+        "type_traits": "cpp",
+        "cmath": "cpp"
     },
 }

@@ -75,11 +75,6 @@ typedef struct
     structure_t structure[MAX_STRUCTURES]; // structurile din domeniu
 } scenario_t;
 
-// #ifdef __NVCC__
-// extern
-// {
-// #endif
-
 // Variabilele globale pentru memorarea tuturor datelor de intrare pentru scenarii
 extern scenario_t scenario[MAX_SCENARIOS];
 extern int num_scenarios;
@@ -96,16 +91,14 @@ extern int SAVE_TIME;
 
 // Variabile globale ale algoritmului de simulare
 extern double **ua, **ub, **uc, **xchg;
-
-// #ifdef __NVCC__
-// }
-// #endif
+extern double **test_ua, **test_ub, **test_uc;
+// extern double *cudaUa, *cudaUb, *cudaUc, *cudaXchg;
 
 // Functii
 int import_data(char *path);
 void print_import_data(int rank);
 
-int export_to_vtk(int step);
+int export_to_vtk(int step, double **exportMatrix);
 int export_to_gnuplot(int scn_index, double time);
 
 void load_scenario();
@@ -113,9 +106,15 @@ void unload_scenario();
 void init_scenario(int ny);
 void recalculate_positions(int rank, int numtask);
 
+void unload_scenario_gpu(double *cudaUa, double *cudaUb, double *cudaUc);
+void init_scenario_gpu(int rank, int l_ny, double **cudaUa, double **cudaUb, double **cudaUc);
+void compute_acoustics_gpu(int rank, int numtask, double *cudaUa, double *cudaUb, double *cudaUc, int source_active, int radius);
+
 int in_structure(int x, int y);
 int is_source(int x, int y, int radius, int source_active);
 void pulse_source(int rank, int numtask, int radius, int step, double amp, int *source_active);
 void m_compute_acoustics(int rank, int numtask, int source_active, int radius);
 
+void pulse_source_gpu(int rank, int step, double *cudaUa, double *cudaUb, double *cudaUc, int *source_active, int local_ny, int numtask);
+void test_source();
 #endif

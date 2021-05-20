@@ -10,7 +10,7 @@
 
 #include "acoustics.h"
 
-int export_to_vtk(int step)
+int export_to_vtk(int step, double **exportMatrix)
 {
     FILE *f;
     char *path, *buf;
@@ -54,7 +54,7 @@ int export_to_vtk(int step)
             for (j = 0; j < nx; j++)
             {
                 if (!in_structure(i, j))
-                    fprintf(f, "%.20lf\n", uc[i][j]);
+                    fprintf(f, "%.20lf\n", exportMatrix[i][j]);
                 else
                     fprintf(f, "%.20lf\n", scenario[scn_index].amp);
             }
