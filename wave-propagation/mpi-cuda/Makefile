@@ -19,3 +19,4 @@ build:
 
 clean:
 	rm -f *~ *.o acoustics
+	rm -fr export

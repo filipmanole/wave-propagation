@@ -193,20 +193,6 @@ int main(int argc, char *argv[])
             EXIT_ERROR("Error calloc");
         }
 
-        // if (rank == 1)
-        // {
-        //     if (is_source(28, 73, radius, 1))
-        //     {
-        //         printf("SOURCE TEST OK!\n");
-        //     }
-        //     else
-        //     {
-        //         printf("SOURCE TEST FAIL!\n");
-        //     }
-
-        //     test_source();
-        // }
-
         int source_active_gpu = source_active;
         while (step < (int)(MAX_TIME / TIME_STEP))
         {
@@ -215,102 +201,70 @@ int main(int argc, char *argv[])
             pulse_source_gpu(rank, step, cudaUa, cudaUb, cudaUc, &source_active_gpu, local_ny, numtask);
             cudaDeviceSynchronize();
 
-            if (source_active != source_active_gpu)
-            {
-                printf("There is a problem\n");
-            }
-
-            m_compute_acoustics(rank, numtask, source_active, radius);
-            compute_acoustics_gpu(rank, numtask, cudaUa, cudaUb, cudaUc, source_active_gpu, local_ny);
-            cudaDeviceSynchronize();
-
-            MPI_Barrier(MPI_COMM_WORLD);
-
-            if (rank == 0)
-            {
-                MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, &status);
-                cudaStatus = cudaMemcpy(cudaUc + (local_ny * nx), (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
-                cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + ((local_ny - 1) * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
-                MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD);
-                ////
-                MPI_Recv(uc[local_ny], nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, &status);
-                MPI_Send(uc[local_ny - 1], nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD);
-            }
-            else if (rank % 2 == 1 && rank != numtask - 1)
-            {
-                cudaStatus = cudaMemcpy(cudaMpiBuf, cudaUc + nx, nx * sizeof(double), cudaMemcpyDeviceToHost);
-                MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-                cudaStatus = cudaMemcpy(cudaUc, (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
-
-                cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + (local_ny * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
-                MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
-                cudaStatus = cudaMemcpy(cudaUc + ((local_ny + 1) * nx), (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
-                ////
-                MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-                MPI_Send(uc[local_ny], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(uc[local_ny + 1], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
-            }
-            else if (rank % 2 == 0 && rank != numtask - 1)
-            {
-                MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
-                cudaStatus = cudaMemcpy(cudaUc + ((local_ny + 1) * nx), (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
-                cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + (local_ny * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
-                MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
-
-                MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-                cudaStatus = cudaMemcpy(cudaUc, (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
-                cudaStatus = cudaMemcpy(cudaMpiBuf, cudaUc + nx, nx * sizeof(double), cudaMemcpyDeviceToHost);
-                MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-                ////
-                MPI_Recv(uc[local_ny + 1], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
-                MPI_Send(uc[local_ny], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-                MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-            }
-            else if (rank == numtask - 1)
-            {
-                cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + nx, nx * sizeof(double), cudaMemcpyDeviceToHost);
-                MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-                cudaStatus = cudaMemcpy(cudaUc, (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
-                ////
-                MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-            }
-
-            // communication print text
-
-            // if (rank == 3)
+            // if (source_active != source_active_gpu)
             // {
-            //     cudaPrinterX<<<1, 1>>>(rank, local_ny, nx, cudaUa, cudaUb, cudaUc);
-            //     cudaStatus = cudaDeviceSynchronize();
-            //     if (cudaStatus != cudaSuccess)
-            //     {
-            //         EXIT_ERROR(cudaGetErrorString(cudaStatus));
-            //     }
+            //     printf("There is a problem\n");
+            // }
 
-            //     printf("RANK uc: %d\n\n", rank);
-            //     for (int ii = 0; ii < 2; ++ii)
-            //     {
-            //         printf("rank: %i, line: %i, length: %i\n", rank, ii, local_ny);
-            //         for (int jj = 0; jj < nx; ++jj)
-            //         {
-            //             printf("%.1f ", uc[ii][jj]);
-            //         }
-            //         printf("\n");
-            //     }
-            //     for (int ii = local_ny; ii < local_ny + 2; ++ii)
-            //     {
-            //         printf("rank: %i, line: %i, length: %i\n", rank, ii, local_ny);
-            //         for (int jj = 0; jj < nx; ++jj)
-            //         {
-            //             printf("%.1f ", uc[ii][jj]);
-            //         }
-            //         printf("\n");
-            //     }
+            // m_compute_acoustics(rank, numtask, source_active, radius);
+            // compute_acoustics_gpu(rank, numtask, cudaUa, cudaUb, cudaUc, source_active_gpu, local_ny);
+            // cudaDeviceSynchronize();
+
+            // MPI_Barrier(MPI_COMM_WORLD);
+
+            // if (rank == 0)
+            // {
+            //     MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, &status);
+            //     cudaStatus = cudaMemcpy(cudaUc + (local_ny * nx), (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
+            //     cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + ((local_ny - 1) * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
+            //     MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD);
+            //     ////
+            //     MPI_Recv(uc[local_ny], nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, &status);
+            //     MPI_Send(uc[local_ny - 1], nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD);
+            // }
+            // else if (rank % 2 == 1 && rank != numtask - 1)
+            // {
+            //     cudaStatus = cudaMemcpy(cudaMpiBuf, cudaUc + nx, nx * sizeof(double), cudaMemcpyDeviceToHost);
+            //     MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
+            //     MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+            //     cudaStatus = cudaMemcpy(cudaUc, (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
+
+            //     cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + (local_ny * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
+            //     MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+            //     MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
+            //     cudaStatus = cudaMemcpy(cudaUc + ((local_ny + 1) * nx), (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
+            //     ////
+            //     MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
+            //     MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+            //     MPI_Send(uc[local_ny], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+            //     MPI_Recv(uc[local_ny + 1], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
+            // }
+            // else if (rank % 2 == 0 && rank != numtask - 1)
+            // {
+            //     MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
+            //     cudaStatus = cudaMemcpy(cudaUc + ((local_ny + 1) * nx), (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
+            //     cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + (local_ny * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
+            //     MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+
+            //     MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+            //     cudaStatus = cudaMemcpy(cudaUc, (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
+            //     cudaStatus = cudaMemcpy(cudaMpiBuf, cudaUc + nx, nx * sizeof(double), cudaMemcpyDeviceToHost);
+            //     MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
+            //     ////
+            //     MPI_Recv(uc[local_ny + 1], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
+            //     MPI_Send(uc[local_ny], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+            //     MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+            //     MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
+            // }
+            // else if (rank == numtask - 1)
+            // {
+            //     cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + nx, nx * sizeof(double), cudaMemcpyDeviceToHost);
+            //     MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
+            //     MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+            //     cudaStatus = cudaMemcpy(cudaUc, (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
+            //     ////
+            //     MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
+            //     MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
             // }
 
             if (step % SAVE_TIME == 1)
@@ -321,10 +275,6 @@ int main(int argc, char *argv[])
                     {
                         cudaStatus = cudaMemcpy(exportMatrix[j], (const double *)cudaUc + (j * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
                     }
-                    // for (j = 0; j < local_ny; j++)
-                    // {
-                    //     cudaStatus = cudaMemcpy(uc[j], (const double *)cudaUc + (j * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
-                    // }
 
                     for (i = 1; i < numtask; i++)
                     {

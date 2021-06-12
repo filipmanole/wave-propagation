@@ -169,20 +169,26 @@ int is_source(int x, int y, int radius, int source_active)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__device__ int cudaOnEdge(int rank, int numtask, int x, int y, int local_ny, int nx)
+__device__ int cudaOnEdge(int rank, int numtask, int x, int y, int local_ny, int nx) //ok
 {
     if (x == 0 && y != 0 && y != nx - 1 && rank == 0)
         return N_EDGE;
     if (x == local_ny && y != 0 && y != nx - 1 && rank == numtask - 1)
         return S_EDGE;
-    if (y == 0 && x != 0 && x != local_ny)
-        return W_EDGE;
-    if (y == nx - 1 && x != 0 && x != local_ny)
-        return E_EDGE;
+    if (y == 0 && x != 0)
+        if (rank == numtask - 1 && x == local_ny)
+            return 0;
+        else
+            return W_EDGE;
+    if (y == nx - 1 && x != 0)
+        if (rank == numtask - 1 && x == local_ny)
+            return 0;
+        else
+            return E_EDGE;
     return 0;
 }
 
-__device__ int cudaOnCorner(int rank, int numtask, int x, int y, int local_ny, int nx)
+__device__ int cudaOnCorner(int rank, int numtask, int x, int y, int local_ny, int nx) //ok
 {
     if (x == 0 && y == 0 && rank == 0)
         return NW_CORNER;
@@ -195,7 +201,7 @@ __device__ int cudaOnCorner(int rank, int numtask, int x, int y, int local_ny, i
     return 0;
 }
 
-__device__ int cudaOnStructureEdge(int x, int y, scenario_t scenario)
+__device__ int cudaOnStructureEdge(int x, int y, scenario_t scenario) //ok
 {
     int i;
     for (i = 0; i < scenario.nr_struct; i++)
@@ -216,7 +222,7 @@ __device__ int cudaOnStructureEdge(int x, int y, scenario_t scenario)
     return 0;
 }
 
-__device__ int cudaOnStructureCorner(int x, int y, scenario_t scenario)
+__device__ int cudaOnStructureCorner(int x, int y, scenario_t scenario) //ok
 {
     int i;
     for (i = 0; i < scenario.nr_struct; i++)
@@ -233,7 +239,7 @@ __device__ int cudaOnStructureCorner(int x, int y, scenario_t scenario)
     return 0;
 }
 
-__device__ int cudaInStructure(int x, int y, scenario_t scenario)
+__device__ int cudaInStructure(int x, int y, scenario_t scenario) //ok
 {
     int i;
     for (i = 0; i < scenario.nr_struct; i++)
@@ -350,13 +356,29 @@ __global__ void cudaPulseSouce(
     int src_x,
     int src_y,
     int local_ny,
-    int numtask)
+    int numtask,
+    scenario_t scenario)
 {
     int cudaI = blockDim.y * blockIdx.y + threadIdx.y;
     int cudaJ = blockDim.x * blockIdx.x + threadIdx.x;
     int cudaNx = blockDim.x * gridDim.x;
 
     int matrixIdx = cudaNx * cudaI + cudaJ;
+
+    if (cudaInStructure(cudaI, cudaJ, scenario))
+    {
+        cudaUc[matrixIdx] = 200.0;
+    }
+
+    // if (rank == 1)
+    // {
+    //     cudaUc[matrixIdx] = 200.0;
+    // }
+
+    // if (rank == 2)
+    // {
+    //     cudaUc[matrixIdx] = 200.0;
+    // }
 
     int start, stop;
     if (rank == 0)
@@ -376,6 +398,14 @@ __global__ void cudaPulseSouce(
             {
                 cudaUc[matrixIdx] = amp * fabs(sin(step * M_PI / 4));
             }
+
+            // cudaOnEdge(int rank, int numtask, int x, int y, int local_ny, int nx)
+
+            // if (rank == 2)
+            // {
+            //     cudaUc[matrixIdx] = 200.0;
+            // }
+            // cudaUc[matrixIdx] = 200.0;
         }
     }
     else if (source_active)
@@ -402,7 +432,7 @@ void pulse_source_gpu(int rank, int step, double *cudaUa, double *cudaUb, double
     int src_x = scenario[scn_index].source.x;
     int src_y = scenario[scn_index].source.y;
 
-    cudaPulseSouce<<<dimGrid, dimBlock>>>(rank, step, cudaUa, cudaUb, cudaUc, *source_active, amp, MAX_TIME, TIME_STEP, radius, src_x, src_y, local_ny, numtask);
+    cudaPulseSouce<<<dimGrid, dimBlock>>>(rank, step, cudaUa, cudaUb, cudaUc, *source_active, amp, MAX_TIME, TIME_STEP, radius, src_x, src_y, local_ny, numtask, scenario[scn_index]);
     if (step >= (int)(MAX_TIME / TIME_STEP) / 2)
     {
         *source_active = 0;
