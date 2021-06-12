@@ -24,46 +24,6 @@ double **ub;
 double **uc;
 double **xchg;
 
-// double *cudaUa, *cudaUb, *cudaUc, *cudaXchg;
-
-__global__ void cudaPrinterX(int rank, int l_ny, int nx, double *cudaUa, double *cudaUb, double *cudaUc)
-{
-    printf("RANK: %d\n\n", rank);
-    for (int i = 0; i < 2; ++i)
-    {
-        printf("rank: %i, line: %i, length: %i\n", rank, i, l_ny);
-        for (int j = 0; j < nx; ++j)
-        {
-            printf("%.1f ", cudaUc[i * nx + j]);
-        }
-        printf("\n");
-    }
-
-    for (int i = l_ny; i < l_ny + 2; ++i)
-    {
-        printf("rank: %i, line: %i, length: %i\n", rank, i, l_ny);
-        for (int j = 0; j < nx; ++j)
-        {
-            printf("%.1f ", cudaUc[i * nx + j]);
-        }
-        printf("\n");
-    }
-}
-
-__global__ void cudaPrinterMatrix(int rank, int ny, int nx, double *cudaUc)
-{
-    printf("RANK: %d\n\n", rank);
-    for (int i = 0; i < ny; ++i)
-    {
-        printf("rank: %i, line: %i, length: %i\n", rank, i, ny);
-        for (int j = 0; j < nx; ++j)
-        {
-            printf("%.1f ", cudaUc[i * nx + j]);
-        }
-        printf("\n");
-    }
-}
-
 int main(int argc, char *argv[])
 {
     double *cudaUa, *cudaUb, *cudaUc;
@@ -155,6 +115,7 @@ int main(int argc, char *argv[])
     {
         int step = 0;
         int source_active = 1;
+        int source_active_gpu = 1;
 
         start_time = time(NULL);
         load_scenario();
@@ -162,7 +123,6 @@ int main(int argc, char *argv[])
         if (rank == 0)
         {
             local_ny = ny / numtask;
-            init_scenario(ny);
             init_scenario_gpu(rank, ny, &cudaUa, &cudaUb, &cudaUc);
 
             exportMatrix = (double **)malloc(ny * sizeof(double *));
@@ -174,13 +134,11 @@ int main(int argc, char *argv[])
         else if (rank != numtask - 1)
         {
             local_ny = ny / numtask;
-            init_scenario(local_ny + 2);
             init_scenario_gpu(rank, local_ny + 2, &cudaUa, &cudaUb, &cudaUc);
         }
         else
         {
             local_ny = ny - (numtask - 1) * (ny / numtask);
-            init_scenario(local_ny + 1);
             init_scenario_gpu(rank, local_ny + 1, &cudaUa, &cudaUb, &cudaUc);
         }
 
@@ -193,15 +151,11 @@ int main(int argc, char *argv[])
             EXIT_ERROR("Error calloc");
         }
 
-        int source_active_gpu = source_active;
         while (step < (int)(MAX_TIME / TIME_STEP))
         {
-
-            pulse_source(rank, numtask, radius, step, scenario[scn_index].amp, &source_active);
             pulse_source_gpu(rank, step, cudaUa, cudaUb, cudaUc, &source_active_gpu, local_ny, numtask);
             cudaDeviceSynchronize();
 
-            m_compute_acoustics(rank, numtask, source_active, radius);
             compute_acoustics_gpu(rank, numtask, cudaUa, cudaUb, cudaUc, source_active_gpu, local_ny);
             cudaDeviceSynchronize();
 
@@ -213,9 +167,6 @@ int main(int argc, char *argv[])
                 cudaStatus = cudaMemcpy(cudaUc + (local_ny * nx), (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
                 cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + ((local_ny - 1) * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
                 MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD);
-                ////
-                MPI_Recv(uc[local_ny], nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, &status);
-                MPI_Send(uc[local_ny - 1], nx, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD);
             }
             else if (rank % 2 == 1 && rank != numtask - 1)
             {
@@ -228,11 +179,6 @@ int main(int argc, char *argv[])
                 MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
                 MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
                 cudaStatus = cudaMemcpy(cudaUc + ((local_ny + 1) * nx), (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
-                ////
-                MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-                MPI_Send(uc[local_ny], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(uc[local_ny + 1], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
             }
             else if (rank % 2 == 0 && rank != numtask - 1)
             {
@@ -245,11 +191,6 @@ int main(int argc, char *argv[])
                 cudaStatus = cudaMemcpy(cudaUc, (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
                 cudaStatus = cudaMemcpy(cudaMpiBuf, cudaUc + nx, nx * sizeof(double), cudaMemcpyDeviceToHost);
                 MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-                ////
-                MPI_Recv(uc[local_ny + 1], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &status);
-                MPI_Send(uc[local_ny], nx, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
-                MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
             }
             else if (rank == numtask - 1)
             {
@@ -257,9 +198,6 @@ int main(int argc, char *argv[])
                 MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
                 MPI_Recv(cudaMpiBuf, nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
                 cudaStatus = cudaMemcpy(cudaUc, (const double *)cudaMpiBuf, nx * sizeof(double), cudaMemcpyHostToDevice);
-                ////
-                MPI_Send(uc[1], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD);
-                MPI_Recv(uc[0], nx, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
             }
 
             if (step % SAVE_TIME == 1)
@@ -278,8 +216,6 @@ int main(int argc, char *argv[])
                             for (j = 0; j < ny / numtask; j++)
                             {
                                 MPI_Recv(exportMatrix[i * (ny / numtask) + j], nx, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
-                                //
-                                MPI_Recv(uc[i * (ny / numtask) + j], nx, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
                             }
                         }
                         if (i == numtask - 1)
@@ -287,13 +223,10 @@ int main(int argc, char *argv[])
                             for (j = (numtask - 1) * (ny / numtask); j < ny; j++)
                             {
                                 MPI_Recv(exportMatrix[j], nx, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
-                                //
-                                MPI_Recv(uc[j], nx, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
                             }
                         }
                     }
                     export_to_vtk(step, exportMatrix);
-                    // export_to_vtk(step, uc);
                 }
                 else
                 {
@@ -301,8 +234,6 @@ int main(int argc, char *argv[])
                     {
                         cudaStatus = cudaMemcpy(cudaMpiBuf, (const double *)cudaUc + (i * nx), nx * sizeof(double), cudaMemcpyDeviceToHost);
                         MPI_Send(cudaMpiBuf, nx, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
-                        //
-                        MPI_Send(uc[i], nx, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
                     }
                 }
             }
@@ -312,17 +243,11 @@ int main(int argc, char *argv[])
             cudaUb = cudaUc;
             cudaUc = cudaXchg;
 
-            xchg = ua;
-            ua = ub;
-            ub = uc;
-            uc = xchg;
-
             MPI_Barrier(MPI_COMM_WORLD);
 
             step++;
         }
 
-        unload_scenario();
         unload_scenario_gpu(cudaUa, cudaUb, cudaUc);
 
         if (rank == 0)

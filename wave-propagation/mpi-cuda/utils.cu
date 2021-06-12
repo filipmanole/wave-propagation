@@ -28,31 +28,18 @@ void unload_scenario_gpu(double *cudaUa, double *cudaUb, double *cudaUc)
     cudaFree(cudaUc);
 }
 
-void unload_scenario()
-{
-    nx = ny = H = MAX_TIME = TIME_STEP = SAVE_TIME = 0;
-    free(uc);
-    free(ub);
-    free(ua);
-}
-
 __global__ void cudaInitVectors(int rank, int l_ny, int nx, double *cudaUa, double *cudaUb, double *cudaUc)
 {
     int cudaI = blockDim.y * blockIdx.y + threadIdx.y;
     int cudaJ = blockDim.x * blockIdx.x + threadIdx.x;
     int cudaNx = blockDim.x * gridDim.x;
     int matrixIdx = cudaNx * cudaI + cudaJ;
-    // int matrixIdx = (blockDim.x * gridDim.x) * (blockDim.y * blockIdx.y + threadIdx.y) +
-    //                 blockDim.x * blockIdx.x + threadIdx.x;
 
     if (matrixIdx < l_ny * nx)
     {
         cudaUa[matrixIdx] = 0;
         cudaUb[matrixIdx] = 0;
         cudaUc[matrixIdx] = 0;
-        // cudaUa[matrixIdx] = rank;
-        // cudaUb[matrixIdx] = rank;
-        // cudaUc[matrixIdx] = rank;
     }
 }
 
@@ -109,31 +96,6 @@ void init_scenario_gpu(int rank, int l_ny, double **cudaUa, double **cudaUb, dou
     if (cudaStatus != cudaSuccess)
     {
         EXIT_ERROR(cudaGetErrorString(cudaStatus));
-    }
-
-    // if (rank == 5)
-    // {
-    //     cudaPrinter<<<1, 1>>>(rank, l_ny, nx, *cudaUa, *cudaUb, *cudaUc);
-    //     cudaStatus = cudaDeviceSynchronize();
-    //     if (cudaStatus != cudaSuccess)
-    //     {
-    //         EXIT_ERROR(cudaGetErrorString(cudaStatus));
-    //     }
-    // }
-}
-
-void init_scenario(int l_ny)
-{
-    int i;
-
-    ua = (double **)malloc(l_ny * sizeof(double *));
-    ub = (double **)malloc(l_ny * sizeof(double *));
-    uc = (double **)malloc(l_ny * sizeof(double *));
-    for (i = 0; i < l_ny; i++)
-    {
-        ua[i] = (double *)calloc(nx, sizeof(double));
-        ub[i] = (double *)calloc(nx, sizeof(double));
-        uc[i] = (double *)calloc(nx, sizeof(double));
     }
 }
 
