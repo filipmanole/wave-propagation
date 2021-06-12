@@ -254,7 +254,7 @@ __device__ int cudaInStructure(int x, int y, scenario_t scenario) //ok
 __device__ double cudaComputeNode(int x, int y, double TIME_STEP, double H, double *cudaUa, double *cudaUb)
 {
     int cudaNx = blockDim.x * gridDim.x;
-    return (2 * cudaUa[x * cudaNx + y] - cudaUa[x * cudaNx + y] + pow(TIME_STEP, 2) / pow(H, 2) * (cudaUb[(x + 1) * cudaNx + y] - 4 * cudaUb[x * cudaNx + y] + cudaUb[(x - 1) * cudaNx + y] + cudaUb[x * cudaNx + (y + 1)] + cudaUb[x * cudaNx + (y - 1)]));
+    return (2 * cudaUb[x * cudaNx + y] - cudaUa[x * cudaNx + y] + pow(TIME_STEP, 2) / pow(H, 2) * (cudaUb[(x + 1) * cudaNx + y] - 4 * cudaUb[x * cudaNx + y] + cudaUb[(x - 1) * cudaNx + y] + cudaUb[x * cudaNx + (y + 1)] + cudaUb[x * cudaNx + (y - 1)]));
 }
 
 __device__ double cudaComputeEdgeNode(int i, int j, int side, double *cudaUb)
@@ -335,7 +335,7 @@ __device__ double cudaComputeStructureEdgeNode(int i, int j, int side, double *c
 
 __device__ int cudaIsSource(int x, int y, int source_active, int radius, int src_x, int src_y)
 {
-    int length = sqrt(pow((float)(src_x - x), 2) + pow((float)(src_y - y), 2));
+    int length = ceil(sqrt(pow((double)(src_x - x), 2) + pow((double)(src_y - y), 2)));
     if (source_active && length <= radius)
         return 1;
 
