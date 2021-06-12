@@ -53,11 +53,10 @@ int export_to_vtk(int step, double **exportMatrix)
         for (i = 0; i < ny; i++)
             for (j = 0; j < nx; j++)
             {
-                fprintf(f, "%.20lf\n", exportMatrix[i][j]);
-                // if (!in_structure(i, j))
-                //     fprintf(f, "%.20lf\n", exportMatrix[i][j]);
-                // else
-                //     fprintf(f, "%.20lf\n", scenario[scn_index].amp);
+                if (!in_structure(i, j))
+                    fprintf(f, "%.20lf\n", exportMatrix[i][j]);
+                else
+                    fprintf(f, "%.20lf\n", scenario[scn_index].amp);
             }
 
         fclose(f);

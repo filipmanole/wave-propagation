@@ -365,21 +365,6 @@ __global__ void cudaPulseSouce(
 
     int matrixIdx = cudaNx * cudaI + cudaJ;
 
-    if (cudaInStructure(cudaI, cudaJ, scenario))
-    {
-        cudaUc[matrixIdx] = 200.0;
-    }
-
-    // if (rank == 1)
-    // {
-    //     cudaUc[matrixIdx] = 200.0;
-    // }
-
-    // if (rank == 2)
-    // {
-    //     cudaUc[matrixIdx] = 200.0;
-    // }
-
     int start, stop;
     if (rank == 0)
         start = 0;
@@ -398,14 +383,6 @@ __global__ void cudaPulseSouce(
             {
                 cudaUc[matrixIdx] = amp * fabs(sin(step * M_PI / 4));
             }
-
-            // cudaOnEdge(int rank, int numtask, int x, int y, int local_ny, int nx)
-
-            // if (rank == 2)
-            // {
-            //     cudaUc[matrixIdx] = 200.0;
-            // }
-            // cudaUc[matrixIdx] = 200.0;
         }
     }
     else if (source_active)
