@@ -10,3 +10,5 @@
 wave-propagation/sendFiles.sh
 **/*.o
 **/acoustics
+
+**/export
